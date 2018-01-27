@@ -176,9 +176,9 @@ class TaskPanels(Task):
         kibiter_major = es_version(self.conf['es_enrichment']['url'])
         if kibiter_major == "6":
             # Force the creation of the .kibana index
-            res = requests.post(ES6_KIBANA_INIT_URL, headers=ES6_KIBANA_INIT_HEADERS,
-                                data=ES6_KIBANA_INIT_DATA)
             try:
+                res = requests.post(ES6_KIBANA_INIT_URL, headers=ES6_KIBANA_INIT_HEADERS,
+                                data=ES6_KIBANA_INIT_DATA)
                 res.raise_for_status()
             except Exception as ex:
                 print(ES6_KIBANA_INIT_HEADERS)
