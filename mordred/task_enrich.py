@@ -144,11 +144,29 @@ class TaskEnrich(Task):
         spent_time = time.strftime("%H:%M:%S", time.gmtime(time.time() - time_start))
         logger.info('[%s] enrichment finished in %s', self.backend_section, spent_time)
 
-    def __autorefresh(self):
-        # Refresh projects
+    def __refresh_identities(self, uuid_list=None):
+        """Refresh identities in enriched index.
+
+        Refresh all identities, according to current information in the
+        SortingHat database. If uuid_list is not None, refresh identities
+        only for documents for which the author_uuid field matches
+        one of the uuids in the list.
+
+        :param uuid_list: list of uuids to refresh
+        """
+
         enrich_backend = self._get_enrich_backend()
         field_id = enrich_backend.get_field_unique_id()
+        if uuid_list is None:
+            filter = None
+        else:
+            filter = {"name": 'author_uuid', "value": uuid_list}
 
+        eitems = refresh_identities(enrich_backend, filter)
+        enrich_backend.elastic.bulk_upload_sync(eitems, field_id)
+
+    def __autorefresh(self):
+        # Refresh projects
         if False:
             # TODO: Waiting that the project info is loaded from yaml files
             logger.info("Refreshing project field in enriched index")
@@ -165,18 +183,12 @@ class TaskEnrich(Task):
         self.last_autorefresh = datetime.utcnow()
         if uuids_refresh:
             logger.debug("Refreshing for %s uuids %s", self.backend_section, uuids_refresh)
-            eitems = refresh_identities(enrich_backend,
-                                        {"name": "author_uuid",
-                                         "value": uuids_refresh})
-            enrich_backend.elastic.bulk_upload_sync(eitems, field_id)
+            self.__refresh_identities(uuids_refresh)
         else:
             logger.debug("No uuids to be refreshed found")
         if ids_refresh:
             logger.debug("Refreshing for %s ids %s", self.backend_section, ids_refresh)
-            eitems = refresh_identities(enrich_backend,
-                                        {"name": "author_id",
-                                         "value": ids_refresh})
-            enrich_backend.elastic.bulk_upload_sync(eitems, field_id)
+            self.__refresh_identities(ids_refresh)
         else:
             logger.debug("No ids to be refreshed found")
 
